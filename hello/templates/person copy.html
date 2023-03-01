@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <title>Annual Report Deepdive</title>
+      <script  async defer  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBzgj8j3079OquWujCejB5Dhaj728VSrv8"></script>
+      <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+      <script type="text/javascript">
+         google.charts.load('current', {'packages':['corechart']});
+         google.charts.setOnLoadCallback(drawChart);
+         //AIzaSyBzgj8j3079OquWujCejB5Dhaj728VSrv8
+         
+         
+         
+         function drawChart() {
+             var chartData = JSON.parse('{{ p_data|safe }}');
+         
+             var data = new google.visualization.DataTable();
+             data.addColumn('string', chartData[0][0]);
+             data.addColumn('number', chartData[0][1]);
+             data.addColumn({type: 'string', role: 'annotation'});
+             data.addRows(chartData.slice(1).map(function(row) {
+                 return [row[0], row[1], row[1].toString()];
+             }));
+         
+             var maxCount = Math.max.apply(null, chartData.slice(1).map(function(row) {
+             return row[1];
+                         }));
+             var viewWindowMax = Math.ceil(maxCount / 10) * 10;
+         
+             var options = {
+         hAxis: {
+         title: 'Person'
+         },
+         vAxis: {
+         title: 'Mentions Count',
+         viewWindow: {
+             min: 0,
+             max: Math.ceil(Math.max.apply(Math, chartData.slice(1).map(function(row) { return row[1]; })) + 1)
+         }
+         },
+         annotations: {
+         textStyle: {
+             fontName: 'Arial',
+             fontSize: 12,
+             bold: true,
+             italic: false,
+             color: '#000000'
+         },
+         alwaysOutside: true,
+         stem: {
+             length: 0
+         }
+         },
+         legend: {
+         position: 'none'
+         }
+         };
+         
+         
+             var chart = new google.visualization.ColumnChart(document.getElementById('person-chart'));
+             chart.draw(data, options);
+         }
+         
+         function drawOrgChart() {
+             var chartData = JSON.parse('{{ o_data|safe }}');
+         
+             var data = new google.visualization.DataTable();
+             data.addColumn('string', chartData[0][0]);
+             data.addColumn('number', chartData[0][1]);
+             data.addColumn({type: 'string', role: 'annotation'});
+             data.addRows(chartData.slice(1).map(function(row) {
+                 return [row[0], row[1], row[1].toString()];
+             }));
+         
+             var maxCount = Math.max.apply(null, chartData.slice(1).map(function(row) {
+             return row[1];
+                         }));
+             var viewWindowMax = Math.ceil(maxCount / 10) * 10;
+         
+             var options = {
+         hAxis: {
+         
+         },
+         vAxis: {
+         title: 'Mentions Count',
+         viewWindow: {
+             min: 0,
+             max: Math.ceil(Math.max.apply(Math, chartData.slice(1).map(function(row) { return row[1]; })) + 1)
+         }
+         },
+         annotations: {
+         textStyle: {
+             fontName: 'Arial',
+             fontSize: 12,
+             bold: true,
+             italic: false,
+             color: '#000000'
+         },
+         alwaysOutside: true,
+         stem: {
+             length: 0
+         }
+         },
+         legend: {
+         position: 'none'
+         }
+         };
+         
+         
+             var chart = new google.visualization.ColumnChart(document.getElementById('person-chart'));
+             chart.draw(data, options);
+         }
+         
+         function drawLocChart() {
+         var mapOptions = {
+         zoom: 4,
+         center: { lat: 37.0902, lng: -95.7129 }
+         };
+         var map = new google.maps.Map(document.getElementById('person-chart'), mapOptions);
+         
+         // Retrieve location data from the JSON response
+         var locData = JSON.parse('{{ l_data|safe }}');
+         
+         
+         var geocoder = new google.maps.Geocoder();
+         locData.forEach(function(loc) {
+         
+         
+         // Use the city and state values to geocode the location and display it on the map
+         geocoder.geocode({ address: loc[0] }, function(results, status) {
+         if (status === google.maps.GeocoderStatus.OK) {
+         var marker = new google.maps.Marker({
+          position: results[0].geometry.location,
+          map: map,
+          title:loc[0]
+         });
+         } else {
+         console.error('Geocode was not successful for the following reason: ' + status);
+         }
+         });
+         });
+         }
+         
+         
+         
+         
+         function selectCard(card) {
+         // remove the 'selected' class from all cards
+         var cards = document.querySelectorAll('.card');
+         for (var i = 0; i < cards.length; i++) {
+         cards[i].classList.remove('selected');
+         }
+         // add the 'selected' class to the clicked card
+         card.classList.add('selected');
+         
+         // display the appropriate chart
+         if (card.innerText === 'People') {
+         drawChart();
+         } else if (card.innerText === 'Organizations') {
+         drawOrgChart();
+         } else if (card.innerText === 'Locations') {
+         drawLocChart();
+         }
+         }
+         
+         
+         
+      </script>
+      <style>
+         .left {
+         width: 60%;
+         float: left;
+         display: flex;
+         flex-wrap: wrap;
+         }
+         .right {
+         width: 40%;
+         height: 100%;
+         background-color: black;
+         float: right;
+         }
+         #person-chart {
+         width: 750px;
+         height: 450px;
+         }
+         .card {
+         background-color: #fff;
+         border-radius: 5px;
+         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+         cursor: pointer;
+         margin-bottom: 20px;
+         overflow: hidden;
+         transition: all 0.3s ease-in-out;
+         width: calc(50% - 10px);
+         margin-right: 20px;
+         }
+         @media screen and (min-width: 768px) {
+         .card {
+         width: calc(33.33% - 10px);
+         margin-right: 10px;
+         }
+         }
+         .card:hover {
+         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+         transform: translateY(-2px);
+         }
+         .card-title {
+         background-color: #f7f7f7;
+         font-size: 16px;
+         font-weight: bold;
+         padding: 10px;
+         }
+         .console {
+         background-color: black;
+         color: white;
+         overflow: auto;
+         font-family: monospace;
+         overflow-y: auto;
+         height: 100%;
+         }
+         .selected {
+         border: 2px solid blue;
+         }
+      </style>
+   </head>
+   <body>
+      <div class="left">
+         <div class="card" onclick="selectCard(this)">
+            <div class="card-title">People</div>
+         </div>
+         <div class="card" onclick="selectCard(this)">
+            <div class="card-title">Organizations</div>
+         </div>
+         <div class="card" onclick="selectCard(this)">
+            <div class="card-title">Locations</div>
+         </div>
+         <div id="person-chart">
+         </div>
+      </div>
+      <div class="right">
+         <div class="console">
+            This is an example of text that could be displayed in the console on the right side of the screen.
+         </div>
+      </div>
+   </body>
+</html>

@@ -20,4 +20,5 @@ urlpatterns = [
     path("question/<int:id>", hello.views.question, name="question"),
     path("db", hello.views.db, name="db"),
     path("admin/", admin.site.urls),
+    path('person/', hello.views.person_chart_view, name='person'),
 ]

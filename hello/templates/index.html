@@ -1,130 +1,412 @@
-{% extends "base.html" %}
-{% load static %}
+<!DOCTYPE html>
+<html>
+   <head>
+      <title>Shareholder letter deepdive</title>
+      <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 
-{% block content %}
+      <script  async defer  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBzgj8j3079OquWujCejB5Dhaj728VSrv8"></script>
+      <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+      <script type="text/javascript">
+         google.charts.load('current', {'packages':['corechart']});
+         google.charts.setOnLoadCallback(drawChart);
+         //AIzaSyBzgj8j3079OquWujCejB5Dhaj728VSrv8
+         
+         
+         
+         function drawChart() {
+             var chartData = JSON.parse('{{ p_data|safe }}');
+         
+             var data = new google.visualization.DataTable();
+             data.addColumn('string', chartData[0][0]);
+             data.addColumn('number', chartData[0][1]);
+             data.addColumn({type: 'string', role: 'annotation'});
+             data.addRows(chartData.slice(1).map(function(row) {
+                 return [row[0], row[1], row[1].toString()];
+             }));
+         
+             var maxCount = Math.max.apply(null, chartData.slice(1).map(function(row) {
+             return row[1];
+                         }));
+             var viewWindowMax = Math.ceil(maxCount / 10) * 10;
+         
+             var options = {
+         hAxis: {
+         title: 'Person'
+         },
+         vAxis: {
+         title: 'Mentions Count',
+         viewWindow: {
+             min: 0,
+             max: Math.ceil(Math.max.apply(Math, chartData.slice(1).map(function(row) { return row[1]; })) + 1)
+         }
+         },
+         annotations: {
+         textStyle: {
+             fontName: 'Arial',
+             fontSize: 12,
+             bold: true,
+             italic: false,
+             color: '#000000'
+         },
+         alwaysOutside: true,
+         stem: {
+             length: 0
+         }
+         },
+         legend: {
+         position: 'none'
+         }
+         };
+         
+         
+             var chart = new google.visualization.ColumnChart(document.getElementById('person-chart'));
+             chart.draw(data, options);
 
-<div class="header">
-  <div class="logo">
-    <a href="https://www.amazon.com/Minimalist-Entrepreneur-Great-Founders-More/dp/0593192397">
-      <img src="{% static 'book.png' %}" loading="lazy" />
-    </a>
-    <h1>Ask My Book</h1>
-  </div>
-</div>
-
-<div class="main">
-  <p class="credits">This is an experiment in using AI to make my book's content more accessible. Ask a question and AI'll answer it in real-time:</p>
-
-  <form action="/ask" method="post">
-    {% csrf_token %}
-    <textarea name="question" id="question">{{ default_question }}</textarea>
-
-    <div class="buttons" {% if answer %}style="display: none"{% endif %}>
-      <button type="submit" id="ask-button">Ask question</button>
-      <button id="lucky-button" style="background: #eee; border-color: #eee; color: #444;" data>I'm feeling lucky</button>
-    </div>
-  </form>
-
-  {% if answer %}
-    <p id="answer-container" class="hidden showing"><strong>Answer:</strong> <span id="answer">{{ answer }}</span> <button id="ask-another-button" style="display: block;">Ask another question</button></p>
-  {% else %}
-    <p id="answer-container" class="hidden"><strong>Answer:</strong> <span id="answer"></span> <button id="ask-another-button" style="display: none;">Ask another question</button></p>
-  {% endif %}
-
-  <audio id="audio" controls autoplay>
-    <source src="{{ audio_src_url }}" type="audio/wav">
-  </audio>
-</div>
-
-<script>
-  $(document).ready(function() {
-    function randomInteger(min, max) {
-      return Math.floor(Math.random() * (max - min + 1)) + min;
-    }
-
-    var showText = function(target, message, index) {
-      if (index < message.length) {
-        var interval = randomInteger(30, 70);
-        $(target).append(message[index++]);
-        setTimeout(function () { showText(target, message, index); }, interval);
-      } else {
-        history.pushState({}, null, "/question/" + window.newQuestionId);
-        $("#ask-another-button").css("display", "block");
-      }
-    }
-
-    $("#lucky-button").click(function(e) {
-      var options = ["What is a minimalist entrepreneur?", "What is your definition of community?", "How do I decide what kind of business I should start?"],
-          random = ~~(Math.random() * options.length);
-
-      $("textarea").val(options[random]);
-    });
-
-    $("textarea").bind('input propertychange', function(e) {
-      $(".buttons").show();
-      document.getElementById('answer-container').classList.remove("showing");
-      clearTimeout(window.answerShower);
-      document.getElementById('audio').pause();
-      $("#ask-another-button").css("display", "none");
-    });
-
-    $("#ask-another-button").click(function(e) {
-      $(".buttons").show();
-      document.getElementById('answer-container').classList.remove("showing");
-      clearTimeout(window.answerShower);
-      document.getElementById('audio').pause();
-      $("#ask-another-button").css("display", "none");
-      $("textarea").select();
-    });
-
-    $("form").submit(function(e) {
-      if (document.getElementById("question").value == "") {
-        alert("Please ask a question!");
-        e.preventDefault();
-        return false;
-      }
-
-      let askButton = document.getElementById("ask-button");
-      askButton.textContent = "Asking...";
-      askButton.disabled = true;
-
+// Add an event listener to the chart
+google.visualization.events.addListener(chart, 'select', function() {
+    // Get the selected item from the chart
+    var selectedItem = chart.getSelection()[0];
+    if (selectedItem) {
+      // Get the value from the x-axis of the chart
+      var value = data.getValue(selectedItem.row, 0);
+      console.log(value); // display the value in the console
+      // Call your AJAX function here with the value variable as a parameter
+    
       $.ajax({
         type: 'POST',
         url: '/ask',
-        data: $("form").serialize(),
+        data: {value: value},
         datatype: "json",
         encode: true
       }).done(function(data) {
-        $(".buttons").hide();
+        
 
-        var audio = document.getElementById('audio');
-        audio.src = data.audio_src_url;
+        //Console Text Code 
 
-        var answer = document.getElementById('answer');
-        answer.innerHTML = "";
-        document.getElementById('answer-container').classList.add("showing");
+  
+let consoleStyles = 'background-color: white; color: black; overflow: auto; font-family: monospace; overflow-y: auto;';
 
-        window.answerShower = setTimeout(function() {
-          showText("#answer", data.answer, 0);
-        }, 1200);
+ 
+let statements = data.answer.split('.');
 
-        audio.volume = 0.3;
-        audio.play();
+ 
+let formattedText = '';
 
-        askButton.textContent = "Ask question";
-        askButton.disabled = false;
+ 
+for (let i = 0; i < statements.length; i++) {
+  let statement = statements[i].trim(); // Remove any extra whitespace from the statement
+  if (statement.length > 0) { // Only add non-empty statements to the formatted text
+    formattedText += `<li><strong>${statement}</strong></li><br>`;
+  }
+}
 
-        window.newQuestionId = data.id;
+ 
+formattedText = `<h2>Reference from the letter:</h2><br><ul style="list-style-type: disc; font-size: 16px;">${formattedText}</ul>`;
+
+// Update the content of the console div with the formatted text and CSS styles
+document.querySelector('.console').innerHTML = formattedText;
+document.querySelector('.console').setAttribute('style', consoleStyles);
+
+     //Console Text Code End
+
+
+      
+ 
+      });
+ 
+    }
+  });
+
+
+         }
+         
+         function drawOrgChart() {
+             var chartData = JSON.parse('{{ o_data|safe }}');
+         
+             var data = new google.visualization.DataTable();
+             data.addColumn('string', chartData[0][0]);
+             data.addColumn('number', chartData[0][1]);
+             data.addColumn({type: 'string', role: 'annotation'});
+             data.addRows(chartData.slice(1).map(function(row) {
+                 return [row[0], row[1], row[1].toString()];
+             }));
+         
+             var maxCount = Math.max.apply(null, chartData.slice(1).map(function(row) {
+             return row[1];
+                         }));
+             var viewWindowMax = Math.ceil(maxCount / 10) * 10;
+         
+             var options = {
+         hAxis: {
+         
+         },
+         vAxis: {
+         title: 'Mentions Count',
+         viewWindow: {
+             min: 0,
+             max: Math.ceil(Math.max.apply(Math, chartData.slice(1).map(function(row) { return row[1]; })) + 1)
+         }
+         },
+         annotations: {
+         textStyle: {
+             fontName: 'Arial',
+             fontSize: 12,
+             bold: true,
+             italic: false,
+             color: '#000000'
+         },
+         alwaysOutside: true,
+         stem: {
+             length: 0
+         }
+         },
+         legend: {
+         position: 'none'
+         }
+         };
+         
+         
+             var chart = new google.visualization.ColumnChart(document.getElementById('person-chart'));
+             chart.draw(data, options);
+
+
+// Add an event listener to the chart
+google.visualization.events.addListener(chart, 'select', function() {
+    // Get the selected item from the chart
+    var selectedItem = chart.getSelection()[0];
+    if (selectedItem) {
+      // Get the value from the x-axis of the chart
+      var value = data.getValue(selectedItem.row, 0);
+      console.log(value); // display the value in the console
+      // Call your AJAX function here with the value variable as a parameter
+    
+      $.ajax({
+        type: 'POST',
+        url: '/ask',
+        data: {value: value},
+        datatype: "json",
+        encode: true
+      }).done(function(data) {
+        
+
+        //Console Text Code 
+
+  
+let consoleStyles = 'background-color: white; color: black; overflow: auto; font-family: monospace; overflow-y: auto;';
+
+ 
+let statements = data.answer.split('.');
+
+ 
+let formattedText = '';
+
+ 
+for (let i = 0; i < statements.length; i++) {
+  let statement = statements[i].trim(); // Remove any extra whitespace from the statement
+  if (statement.length > 0) { // Only add non-empty statements to the formatted text
+    formattedText += `<li><strong>${statement}</strong></li><br>`;
+  }
+}
+
+ 
+formattedText = `<h2>Reference from the letter:</h2><br><ul style="list-style-type: disc; font-size: 16px;">${formattedText}</ul>`;
+
+// Update the content of the console div with the formatted text and CSS styles
+document.querySelector('.console').innerHTML = formattedText;
+document.querySelector('.console').setAttribute('style', consoleStyles);
+
+     //Console Text Code End
+
+ 
+      });
+ 
+    }
+  });
+
+
+         }
+         
+          
+         
+         function drawLocChart() {
+  var mapOptions = {
+    zoom: 4,
+    center: { lat: 37.0902, lng: -95.7129 }
+  };
+  var map = new google.maps.Map(document.getElementById('person-chart'), mapOptions);
+
+  // Retrieve location data from the JSON response
+  var locData = JSON.parse('{{ l_data|safe }}');
+
+  var geocoder = new google.maps.Geocoder();
+  locData.forEach(function(loc) {
+
+    // Use the city and state values to geocode the location and display it on the map
+    geocoder.geocode({ address: loc[0] }, function(results, status) {
+      if (status === google.maps.GeocoderStatus.OK) {
+        var marker = new google.maps.Marker({
+          position: results[0].geometry.location,
+          map: map,
+          title: loc[0]
+        });
+ // Concatenate the location value with the marker title to display it on the map
+ marker.setTitle(marker.getTitle());
+
+       
+        // Add a click event listener to the marker
+        marker.addListener('click', function() {
+          var value = loc[0]; // Get the location name as the value
+          console.log(value); // Display the value in the console
+          // Call your AJAX function here with the value variable as a parameter
+
+          $.ajax({
+        type: 'POST',
+        url: '/ask',
+        data: {value: value},
+        datatype: "json",
+        encode: true
+      }).done(function(data) {
+        
+
+        //Console Text Code 
+
+  
+let consoleStyles = 'background-color: white; color: black; overflow: auto; font-family: monospace; overflow-y: auto;';
+
+ 
+let statements = data.answer.split('.');
+
+ 
+let formattedText = '';
+
+ 
+for (let i = 0; i < statements.length; i++) {
+  let statement = statements[i].trim(); // Remove any extra whitespace from the statement
+  if (statement.length > 0) { // Only add non-empty statements to the formatted text
+    formattedText += `<li><strong>${statement}</strong></li><br>`;
+  }
+}
+
+ 
+formattedText = `<h2>Reference from the letter:</h2><br><ul style="list-style-type: disc; font-size: 16px;">${formattedText}</ul>`;
+
+// Update the content of the console div with the formatted text and CSS styles
+document.querySelector('.console').innerHTML = formattedText;
+document.querySelector('.console').setAttribute('style', consoleStyles);
+
+     //Console Text Code End
+
+ 
       });
 
-      e.preventDefault();
-      return false;
+
+        });
+      } else {
+        console.error('Geocode was not successful for the following reason: ' + status);
+      }
     });
   });
-</script>
+}
 
-<footer>
-  <p class="credits">Project by <a href="https://twitter.com/shl">Sahil Lavingia</a> • <a href="https://github.com/slavingia/askmybook">Fork on GitHub</a></a></p>
-</footer>
-
-{% endblock %}
+         
+         function selectCard(card) {
+         // remove the 'selected' class from all cards
+         var cards = document.querySelectorAll('.card');
+         for (var i = 0; i < cards.length; i++) {
+         cards[i].classList.remove('selected');
+         }
+         // add the 'selected' class to the clicked card
+         card.classList.add('selected');
+         
+         // display the appropriate chart
+         if (card.innerText === 'People') {
+         drawChart();
+         } else if (card.innerText === 'Organizations') {
+         drawOrgChart();
+         } else if (card.innerText === 'Locations') {
+         drawLocChart();
+         }
+         }
+         
+         
+         
+      </script>
+      <style>
+         .left {
+         width: 60%;
+         float: left;
+         display: flex;
+         flex-wrap: wrap;
+         border-right: 2px solid black; /* Add this line */
+         }
+         .right {
+         width: 40%;
+     
+         float: right;
+         }
+         #person-chart {
+         width: 750px;
+         height: 450px;
+         }
+         .card {
+         background-color: #fff;
+         border-radius: 5px;
+         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+         cursor: pointer;
+         margin-bottom: 20px;
+         overflow: hidden;
+         transition: all 0.3s ease-in-out;
+         width: calc(50% - 10px);
+         margin-right: 20px;
+         }
+         @media screen and (min-width: 768px) {
+         .card {
+         width: calc(33.33% - 10px);
+         margin-right: 10px;
+         }
+         }
+         .card:hover {
+         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+         transform: translateY(-2px);
+         }
+         .card-title {
+         background-color: #f7f7f7;
+         font-size: 16px;
+         font-weight: bold;
+         padding: 10px;
+         }
+         .console {
+         background-color: white;
+         color: black;
+         overflow: auto;
+         font-family: monospace;
+         
+         overflow-y: auto;
+          
+         }
+         .selected {
+         border: 2px solid blue;
+         }
+      </style>
+   </head>
+   <body>
+      <div class="left">
+         <div class="card" onclick="selectCard(this)">
+            <div class="card-title">People</div>
+         </div>
+         <div class="card" onclick="selectCard(this)">
+            <div class="card-title">Organizations</div>
+         </div>
+         <div class="card" onclick="selectCard(this)">
+            <div class="card-title">Locations</div>
+         </div>
+         <div id="person-chart">
+         </div>
+      </div>
+       
+         <div class="console">
+            <h1> Click on the chart to view details</h1>
+         </div>
+      
+   </body>
+</html>

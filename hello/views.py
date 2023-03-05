@@ -28,7 +28,7 @@ COMPLETIONS_MODEL = "text-davinci-003"
 
 MODEL_NAME = "curie"
 
-DOC_EMBEDDINGS_MODEL = f"text-search-{MODEL_NAME}-doc-001"
+DOC_EMBEDDINGS_MODEL = f"text-embedding-ada-002"
 QUERY_EMBEDDINGS_MODEL = f"text-search-{MODEL_NAME}-query-001"
 
 MAX_SECTION_LEN = 500
@@ -130,7 +130,7 @@ def answer_query_with_context(
         df
     )
 
-    #print("===\n", prompt)
+    print("===\n", prompt)
 
     response = openai.Completion.create(
                 prompt=prompt,

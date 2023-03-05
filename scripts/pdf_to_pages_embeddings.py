@@ -25,9 +25,8 @@ openai.api_key = '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'
 
 COMPLETIONS_MODEL = "text-davinci-003"
 
-MODEL_NAME = "curie"
 
-DOC_EMBEDDINGS_MODEL = f"text-search-{MODEL_NAME}-doc-001"
+DOC_EMBEDDINGS_MODEL = f"text-embedding-ada-002"
 
 tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 
@@ -46,8 +45,18 @@ def extract_pages(
         return []
 
     content = " ".join(page_text.split())
-    print("page text: " + content)
-    outputs = [("Page " + str(index), content, count_tokens(content)+4)]
+
+    # divide the page content into 5 equal-sized chunks
+    chunk_size = len(content) // 5
+    chunks = [content[i:i+chunk_size] for i in range(0, len(content), chunk_size)]
+
+    # create a tuple for each chunk with a new page index, title and token count
+    start_index = (index - 1) * 5 + 1
+    outputs = []
+    for i, chunk in enumerate(chunks):
+        title = f"Page {start_index+i}"
+        tokens = count_tokens(chunk) + 4
+        outputs.append((title, chunk, tokens))
 
     return outputs
 
